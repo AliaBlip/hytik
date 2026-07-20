@@ -33,26 +33,30 @@
 
 ---
 
-## 🛠️ Arsitektur & Teknologi
+## 📱 Kompatibilitas IDE: "Code on the Go", AIDE, AndroidIDE & Android Studio
 
-- **Bahasa**: [Kotlin](https://kotlinlang.org/) 100%
-- **Arsitektur**: Clean Architecture + MVVM (*Model-View-ViewModel*) + Repository Pattern
-- **Async & Reactive**: Kotlin Coroutines & `StateFlow` / `LiveData`
-- **Jaringan & Ekstraksi**: Retrofit 2 + OkHttp 3 Streaming Interceptor + Jsoup HTML Parser
-- **Penyimpanan Lokal**: Android Room Database + MediaStore API (Android Q/10+ Ready) + SharedPreferences
-- **UI & Image Loading**: Material Components 3 + ViewPager2 + Coil Image Loader + Shimmer
+Repository ini telah dikonfigurasikan secara khusus dengan **Dua Format Build System (Dual Compatibility)** sekaligus:
+- **Format Groovy Gradle & IDE Markers** (`settings.gradle`, `build.gradle`, `app/build.gradle`, `.iml`, `.project`, `project.properties`): Dibuat agar kompatibel 100% dan langsung terdeteksi sebagai modul aplikasi oleh *mobile IDE* seperti **Code on the Go**, **AIDE**, **AndroidIDE**, **JavaIDEdroid**, maupun **Termux**.
+- **Format Kotlin DSL Gradle** (`settings.gradle.kts`, `build.gradle.kts`, `app/build.gradle.kts`): Dibuat untuk kompatibilitas penuh dengan **Android Studio** dan Gradle modern.
+
+### 🛠️ Cara Membuka di "Code on the Go" / Mobile IDE:
+1. Buka aplikasi **Code on the Go** (atau **AIDE** / **AndroidIDE**).
+2. Pilih opsi **Open Project / Kloning Git**.
+3. Arahkan ke folder root repositori `hytik` (tempat file `settings.gradle` dan direktori `app/` berada).
+4. Aplikasi akan otomatis mendeteksi modul `:app` sebagai modul Android.
+5. Klik **Build / Run** untuk mengkompilasi APK langsung dari perangkat Android-mu!
 
 ---
 
-## 🚀 Cara Membangun (Build & Run)
+## 🚀 Cara Membangun (Build & Run via Terminal / PC)
 
-### Menggunakan Android Studio (Direkomendasikan)
+### Menggunakan Android Studio
 1. Klon repositori ini:
    ```bash
    git clone https://github.com/AliaBlip/hytik.git
    cd hytik
    ```
-2. Buka proyek di **Android Studio** (Koala / Jellyfish / terupdate).
+2. Buka proyek di **Android Studio**.
 3. Tunggu proses sinkronisasi Gradle selesai.
 4. Klik tombol **Run** atau **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
 
