@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- HyTik Primary Brand Colors -->
+    <color name="hytik_primary">#00D2FF</color>
+    <color name="hytik_primary_dark">#00A8CC</color>
+    <color name="hytik_secondary">#3A7BD5</color>
+    <color name="hytik_accent">#00F2FE</color>
+
+    <!-- TikTok Neon Accents -->
+    <color name="tiktok_cyan">#25F4EE</color>
+    <color name="tiktok_pink">#FE2C55</color>
+    <color name="tiktok_dark">#121212</color>
+
+    <!-- UI Background & Cards -->
+    <color name="bg_light">#F8FAFC</color>
+    <color name="bg_dark">#0F172A</color>
+    <color name="card_bg_light">#FFFFFF</color>
+    <color name="card_bg_dark">#1E293B</color>
+    <color name="input_bg_light">#F1F5F9</color>
+    <color name="input_bg_dark">#334155</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary_light">#0F172A</color>
+    <color name="text_secondary_light">#64748B</color>
+    <color name="text_primary_dark">#F8FAFC</color>
+    <color name="text_secondary_dark">#94A3B8</color>
+
+    <!-- Status & Badges -->
+    <color name="badge_hd">#10B981</color>
+    <color name="badge_music">#8B5CF6</color>
+    <color name="badge_photo">#F59E0B</color>
+    <color name="color_error">#EF4444</color>
+    <color name="color_success">#10B981</color>
+    <color name="color_warning">#F59E0B</color>
+
+    <!-- Standard -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+    <color name="overlay_dark">#99000000</color>
+    <color name="divider_color">#E2E8F0</color>
+</resources>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.HyTik" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Primary brand colors -->
+        <item name="colorPrimary">@color/hytik_primary</item>
+        <item name="colorPrimaryVariant">@color/hytik_primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/hytik_secondary</item>
+        <item name="colorSecondaryVariant">@color/hytik_secondary</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorAccent">@color/hytik_accent</item>
+        
+        <!-- Background & Surface -->
+        <item name="android:colorBackground">@color/bg_light</item>
+        <item name="colorSurface">@color/card_bg_light</item>
+        <item name="colorOnSurface">@color/text_primary_light</item>
+        
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/bg_light</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/card_bg_light</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+
+    <style name="CardStyle.HyTik" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="cardBackgroundColor">@color/card_bg_light</item>
+    </style>
+</resources>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HyTik</string>
+    <string name="app_tagline">Support All TikTok Links &amp; Formats</string>
+
+    <!-- Navigation -->
+    <string name="nav_downloader">Downloader</string>
+    <string name="nav_history">Riwayat</string>
+    <string name="nav_settings">Pengaturan</string>
+
+    <!-- Home Downloader Tab -->
+    <string name="header_title">Unduh Video &amp; Foto TikTok</string>
+    <string name="header_subtitle">Tanpa Watermark, Cepat &amp; Kualitas HD</string>
+    <string name="input_hint">Tempel tautan TikTok di sini... (vt.tiktok, m.tiktok, dll)</string>
+    <string name="btn_paste">Tempel</string>
+    <string name="btn_clear">Hapus</string>
+    <string name="btn_download">Cek &amp; Unduh</string>
+    <string name="status_loading">Memuat &amp; mengekstrak data dari server...</string>
+    <string name="error_invalid_url">Tautan tidak valid! Masukkan tautan TikTok yang benar.</string>
+    <string name="error_fetch_failed">Gagal mengekstrak tautan. Periksa koneksi atau coba tautan lain.</string>
+    <string name="clipboard_detected">Tautan TikTok terdeteksi di papan klip!</string>
+
+    <!-- Result Card -->
+    <string name="result_title">Hasil Ekstraksi</string>
+    <string name="download_hd_no_wm">Video HD (No Watermark)</string>
+    <string name="download_no_wm">Video SD (No Watermark)</string>
+    <string name="download_with_wm">Video (With Watermark)</string>
+    <string name="download_audio">Audio MP3 (Musik)</string>
+    <string name="download_all_photos">Unduh Semua Foto (%1$d Foto)</string>
+    <string name="photo_slide_header">Daftar Foto / Carousel (%1$d Foto)</string>
+    <string name="btn_download_photo">Unduh Foto Ini</string>
+
+    <!-- History Tab -->
+    <string name="history_title">Riwayat Unduhan</string>
+    <string name="filter_all">Semua</string>
+    <string name="filter_video">Video</string>
+    <string name="filter_music">Musik</string>
+    <string name="filter_photo">Foto</string>
+    <string name="history_empty">Belum ada file yang diunduh. Yuk mulai unduh dari tab Downloader!</string>
+    <string name="btn_open">Buka</string>
+    <string name="btn_share">Bagikan</string>
+    <string name="btn_delete">Hapus</string>
+    <string name="delete_confirm_title">Hapus Unduhan</string>
+    <string name="delete_confirm_msg">Apakah Anda yakin ingin menghapus file ini dari riwayat dan penyimpanan?</string>
+
+    <!-- Settings & Guide Tab -->
+    <string name="settings_title">Pengaturan &amp; Panduan</string>
+    <string name="guide_title">Cara Mengunduh dari TikTok:</string>
+    <string name="guide_step_1">1. Buka aplikasi atau situs web TikTok.</string>
+    <string name="guide_step_2">2. Pilih video atau slide foto yang ingin diunduh.</string>
+    <string name="guide_step_3">3. Klik tombol Bagikan (Share) berbentuk panah di kanan bawah.</string>
+    <string name="guide_step_4">4. Klik \"Salin Tautan\" (Copy Link).</string>
+    <string name="guide_step_5">5. Buka kembali aplikasi HyTik, tautan akan otomatis terdeteksi atau tekan \"Tempel\".</string>
+    <string name="pref_auto_paste_title">Deteksi Tautan Otomatis</string>
+    <string name="pref_auto_paste_desc">Otomatis mengisi tautan TikTok saat membuka aplikasi jika ada di papan klip</string>
+    <string name="pref_engine_title">Mesin Ekstraksi (Engine)</string>
+    <string name="pref_engine_desc">Pilih mesin ekstraksi utama atau gunakan mode Hybrid Auto-Fallback</string>
+    <string name="pref_storage_title">Lokasi Penyimpanan</string>
+    <string name="pref_storage_desc">Video disimpan di Movies/HyTik, Foto di Pictures/HyTik, Audio di Music/HyTik</string>
+    <string name="pref_clear_history">Bersihkan Semua Riwayat</string>
+    <string name="pref_clear_history_desc">Menghapus catatan riwayat unduhan di aplikasi</string>
+    <string name="about_app">Tentang HyTik</string>
+    <string name="about_desc">HyTik v1.0.0-PRO - Aplikasi pengunduh TikTok tercepat dengan multi-engine scraper, mendukung semua format tautan dan semua tipe konten (Video HD, Slide Foto, Audio MP3).</string>
+
+    <!-- Notifications & Status -->
+    <string name="download_started">Unduhan dimulai: %1$s</string>
+    <string name="download_complete">Unduhan selesai! Tersimpan di folder %1$s</string>
+    <string name="download_failed">Unduhan gagal: %1$s</string>
+    <string name="file_not_found">File tidak ditemukan di penyimpanan peranti.</string>
+    <string name="permission_required">Izin penyimpanan diperlukan untuk menyimpan file pada versi Android lama.</string>
+    <string name="yes">Ya</string>
+    <string name="no">Tidak</string>
+    <string name="close">Tutup</string>
+</resources>
