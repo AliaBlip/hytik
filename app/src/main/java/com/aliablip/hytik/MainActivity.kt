@@ -2,11 +2,14 @@ package com.aliablip.hytik
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import com.aliablip.hytik.data.notification.DownloadNotificationHelper
 import com.aliablip.hytik.data.preferences.AppPreferences
 import com.aliablip.hytik.databinding.ActivityMainBinding
 import com.aliablip.hytik.ui.main.MainViewModel
@@ -15,12 +18,30 @@ import com.aliablip.hytik.ui.tabs.DownloaderFragment
 import com.aliablip.hytik.ui.tabs.HistoryFragment
 import com.aliablip.hytik.ui.tabs.SettingsFragment
 import com.aliablip.hytik.ui.utils.NetworkUtils
+import com.aliablip.hytik.ui.utils.PermissionManager
+import com.aliablip.hytik.ui.utils.UiUtils
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels { MainViewModelFactory() }
     private lateinit var preferences: AppPreferences
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        val allGranted = perms.values.all { it }
+        if (!allGranted) {
+            // optional prompt, not blocking
+            val missing = PermissionManager.getMissingPermissions(this)
+            if (missing.isNotEmpty() && !preferences.hasAskedMediaPermission) {
+                preferences.hasAskedMediaPermission = true
+                // show subtle info only first time
+            }
+        }
+        // create channel anyway
+        DownloadNotificationHelper.createChannel(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +52,36 @@ class MainActivity : AppCompatActivity() {
 
         setupNavigation()
         handleIncomingIntent(intent)
+
+        // Professional: create notification channels early
+        DownloadNotificationHelper.createChannel(this)
+
+        // Professional: request media + notification permissions on first launch
+        requestInitialPermissions()
+    }
+
+    private fun requestInitialPermissions() {
+        val missing = PermissionManager.getMissingPermissions(this)
+        if (missing.isNotEmpty()) {
+            // Tampilkan dialog profesional singkat sebelum request
+            if (!preferences.hasAskedMediaPermission) {
+                AlertDialog.Builder(this)
+                    .setTitle("Izin Profesional HyTik")
+                    .setMessage("Agar HyTik bekerja optimal:\n\n• Akses Video/Gambar/Audio untuk menyimpan ke galeri\n• Notifikasi untuk progress download di bar status\n\nIzin ini membuat pengalaman download jadi profesional & transparan.")
+                    .setPositiveButton("Aktifkan Izin") { _, _ ->
+                        preferences.hasAskedMediaPermission = true
+                        permissionLauncher.launch(missing)
+                    }
+                    .setNegativeButton("Nanti") { d, _ ->
+                        preferences.hasAskedMediaPermission = true
+                        d.dismiss()
+                    }
+                    .show()
+            } else {
+                // second time just launch silently
+                permissionLauncher.launch(missing)
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -50,7 +101,6 @@ class MainActivity : AppCompatActivity() {
             override fun createFragment(position: Int): Fragment = fragments[position]
         }
 
-        // Disable user swipe on ViewPager to prevent accidental horizontal gesture conflicts with photo slides
         binding.viewPager.isUserInputEnabled = false
 
         binding.bottomNav.setOnItemSelectedListener { item ->
@@ -85,6 +135,7 @@ class MainActivity : AppCompatActivity() {
                     binding.viewPager.setCurrentItem(0, false)
                     binding.bottomNav.selectedItemId = R.id.nav_downloader
                     viewModel.fetchMedia(extractedUrl, preferences.engineMode)
+                    UiUtils.showToast(this, "Tautan TikTok diterima: ${extractedUrl.take(50)}...")
                 }
             }
         }

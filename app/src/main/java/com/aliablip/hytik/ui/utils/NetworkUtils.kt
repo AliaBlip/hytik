@@ -1,13 +1,24 @@
 package com.aliablip.hytik.ui.utils
 
 object NetworkUtils {
-    private val TIKTOK_REGEX = Regex("https?://(?:www\\.|vt\\.|vm\\.|m\\.|t\\.)?tiktok\\.com/[^\\s\"')<>]+")
+    private val TIKTOK_REGEXS = listOf(
+        Regex("""https?://(?:www\.)?tiktok\.com/[^\s"'()<>]+""", RegexOption.IGNORE_CASE),
+        Regex("""https?://(?:vt|vm|m|t)\.tiktok\.com/[^\s"'()<>]+""", RegexOption.IGNORE_CASE)
+    )
 
     fun containsTikTokUrl(text: String): Boolean {
-        return TIKTOK_REGEX.containsMatchIn(text)
+        return TIKTOK_REGEXS.any { it.containsMatchIn(text) }
     }
 
     fun extractTikTokUrl(text: String): String? {
-        return TIKTOK_REGEX.find(text)?.value?.trim()
+        for (rgx in TIKTOK_REGEXS) {
+            val match = rgx.find(text)
+            if (match != null) {
+                var url = match.value.trim()
+                url = url.trimEnd('.', ',', '!', ')', ']', '}', '"', '\'')
+                return url
+            }
+        }
+        return null
     }
 }

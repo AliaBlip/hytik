@@ -14,7 +14,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.io.OutputStream
 
 object FastMediaDownloader {
@@ -31,12 +30,21 @@ object FastMediaDownloader {
     ): Result<Uri> {
         return withContext(Dispatchers.IO) {
             try {
-                val client = ApiClient.okHttpClient
-                val request = Request.Builder().url(url).build()
+                // gunakan downloadClient yang lebih optimal untuk file besar
+                val client = ApiClient.downloadClient
+
+                val request = Request.Builder()
+                    .url(url)
+                    .get()
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/121 Mobile Safari/537.36")
+                    .header("Accept", "*/*")
+                    .header("Referer", "https://www.tiktok.com/")
+                    .build()
+
                 val response = client.newCall(request).execute()
 
                 if (!response.isSuccessful || response.body == null) {
-                    return@withContext Result.failure(Exception("Server menolak unduhan (HTTP ${response.code})"))
+                    return@withContext Result.failure(Exception("Server menolak unduhan (HTTP ${response.code}). Coba ganti mode engine ke Smart Auto."))
                 }
 
                 val body = response.body!!
@@ -66,6 +74,7 @@ object FastMediaDownloader {
                         put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                         put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                         put(MediaStore.MediaColumns.RELATIVE_PATH, targetDirName)
+                        put(MediaStore.MediaColumns.IS_PENDING, 1)
                     }
 
                     val collectionUri = when (mediaType) {
@@ -75,10 +84,43 @@ object FastMediaDownloader {
                     }
 
                     val itemUri = resolver.insert(collectionUri, contentValues)
-                        ?: return@withContext Result.failure(Exception("Gagal membuat entri di MediaStore"))
+                        ?: return@withContext Result.failure(Exception("Gagal membuat entri di MediaStore. Pastikan izin media diberikan."))
                     finalUri = itemUri
                     outputStream = resolver.openOutputStream(itemUri)
                     finalFilePath = "$targetDirName/$fileName"
+
+                    if (outputStream == null) {
+                        return@withContext Result.failure(Exception("Gagal membuka aliran penyimpanan. Coba aktifkan izin media di pengaturan."))
+                    }
+
+                    val buffer = ByteArray(8192)
+                    var bytesCopied: Long = 0
+                    var read: Int
+                    val totalKb = if (contentLength > 0) contentLength / 1024 else 0L
+
+                    while (inputStream.read(buffer).also { read = it } >= 0) {
+                        outputStream.write(buffer, 0, read)
+                        bytesCopied += read
+                        if (contentLength > 0) {
+                            val percent = ((bytesCopied * 100) / contentLength).toInt().coerceIn(0, 100)
+                            val downloadedKb = bytesCopied / 1024
+                            onProgress(percent, downloadedKb, totalKb)
+                        } else {
+                            // indeterminate
+                            val downloadedKb = bytesCopied / 1024
+                            onProgress(0, downloadedKb, 0)
+                        }
+                    }
+
+                    outputStream.flush()
+                    outputStream.close()
+                    inputStream.close()
+
+                    // mark as not pending
+                    contentValues.clear()
+                    contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    resolver.update(itemUri, contentValues, null, null)
+
                 } else {
                     val publicDir = Environment.getExternalStoragePublicDirectory(
                         when (mediaType) {
@@ -91,52 +133,55 @@ object FastMediaDownloader {
                     if (!hytikDir.exists()) hytikDir.mkdirs()
 
                     val targetFile = File(hytikDir, fileName)
+                    // jika sudah ada, overwrite
+                    if (targetFile.exists()) targetFile.delete()
+
                     outputStream = FileOutputStream(targetFile)
                     finalFilePath = targetFile.absolutePath
                     finalUri = Uri.fromFile(targetFile)
-                }
 
-                if (outputStream == null) {
-                    return@withContext Result.failure(Exception("Gagal membuka aliran penyimpanan"))
-                }
+                    val buffer = ByteArray(8192)
+                    var bytesCopied: Long = 0
+                    var read: Int
+                    val totalKb = if (contentLength > 0) contentLength / 1024 else 0L
 
-                val buffer = ByteArray(8192)
-                var bytesCopied: Long = 0
-                var read: Int
-                val totalKb = if (contentLength > 0) contentLength / 1024 else 0L
-
-                while (inputStream.read(buffer).also { read = it } >= 0) {
-                    outputStream.write(buffer, 0, read)
-                    bytesCopied += read
-                    if (contentLength > 0) {
-                        val percent = ((bytesCopied * 100) / contentLength).toInt()
-                        val downloadedKb = bytesCopied / 1024
-                        onProgress(percent, downloadedKb, totalKb)
+                    while (inputStream.read(buffer).also { read = it } >= 0) {
+                        outputStream.write(buffer, 0, read)
+                        bytesCopied += read
+                        if (contentLength > 0) {
+                            val percent = ((bytesCopied * 100) / contentLength).toInt().coerceIn(0, 100)
+                            val downloadedKb = bytesCopied / 1024
+                            onProgress(percent, downloadedKb, totalKb)
+                        }
                     }
-                }
 
-                outputStream.flush()
-                outputStream.close()
-                inputStream.close()
+                    outputStream.flush()
+                    outputStream.close()
+                    inputStream.close()
+                }
 
                 // Save to History DB
-                val dao = AppDatabase.getInstance(context).downloadHistoryDao()
-                val entity = DownloadHistoryEntity(
-                    id = System.currentTimeMillis().toString() + "_" + fileName.hashCode(),
-                    title = title,
-                    authorName = authorName,
-                    coverUrl = coverUrl,
-                    filePath = finalFilePath,
-                    fileUriString = finalUri?.toString() ?: "",
-                    mediaType = mediaType,
-                    fileSizeKb = bytesCopied / 1024,
-                    downloadedAtMillis = System.currentTimeMillis()
-                )
-                dao.insertHistory(entity)
+                try {
+                    val dao = AppDatabase.getInstance(context).downloadHistoryDao()
+                    val entity = DownloadHistoryEntity(
+                        id = System.currentTimeMillis().toString() + "_" + fileName.hashCode(),
+                        title = title,
+                        authorName = authorName,
+                        coverUrl = coverUrl,
+                        filePath = finalFilePath,
+                        fileUriString = finalUri?.toString() ?: "",
+                        mediaType = mediaType,
+                        fileSizeKb = if (contentLength > 0) contentLength / 1024 else 0,
+                        downloadedAtMillis = System.currentTimeMillis()
+                    )
+                    dao.insertHistory(entity)
+                } catch (_: Exception) {
+                    // history save fail shouldn't block success
+                }
 
                 Result.success(finalUri ?: Uri.EMPTY)
             } catch (e: Exception) {
-                Result.failure(e)
+                Result.failure(Exception(e.message ?: "Gagal mengunduh file. Periksa koneksi internet."))
             }
         }
     }

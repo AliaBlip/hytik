@@ -33,13 +33,15 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
+            // DISABLED for Code On The Go stability - enable R8 only di Android Studio
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.debug
         }
         debug {
             minifyEnabled false
+            shrinkResources false
         }
     }
 

@@ -82,6 +82,63 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Professional Permission Card -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/CardStyle.HyTik"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:strokeColor="#F59E0B"
+            app:strokeWidth="1.2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_settings"
+                        app:tint="@color/hytik_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="Akses Profesional"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvPermissionStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Memeriksa izin media &amp; notifikasi..."
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCheckPermission"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Kelola Izin Media &amp; Notifikasi"
+                    app:icon="@drawable/ic_settings" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Settings Cards -->
         <com.google.android.material.card.MaterialCardView
             style="@style/CardStyle.HyTik"
@@ -137,7 +194,7 @@
                     android:layout_marginVertical="12dp"
                     android:background="@color/divider_color" />
 
-                <!-- Engine Selection -->
+                <!-- Engine Selection - Professional Naming -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -169,21 +226,23 @@
                             android:id="@+id/rbEngineHybrid"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="⚡ Auto Hybrid (Tercepat &amp; Paling Stabil - Direkomendasikan)"
+                            android:text="⚡ HyTik Smart Engine (Direkomendasikan)"
                             android:textSize="13sp" />
 
                         <RadioButton
                             android:id="@+id/rbEngineTikWm"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="🔧 Engine 1 (TikWM HD Pro API)"
+                            android:layout_marginTop="6dp"
+                            android:text="💎 HyTik Ultra HD"
                             android:textSize="13sp" />
 
                         <RadioButton
                             android:id="@+id/rbEngineTikLy"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="🚀 Engine 2 (TikLyDown Fast Extractor)"
+                            android:layout_marginTop="6dp"
+                            android:text="🚀 HyTik Turbo Fast"
                             android:textSize="13sp" />
                     </RadioGroup>
                 </LinearLayout>

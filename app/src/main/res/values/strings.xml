@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HyTik</string>
-    <string name="app_tagline">Support All TikTok Links &amp; Formats</string>
+    <string name="app_tagline">HyTik Core - Unduh TikTok Profesional</string>
 
     <!-- Navigation -->
     <string name="nav_downloader">Downloader</string>
@@ -10,24 +10,24 @@
 
     <!-- Home Downloader Tab -->
     <string name="header_title">Unduh Video &amp; Foto TikTok</string>
-    <string name="header_subtitle">Tanpa Watermark, Cepat &amp; Kualitas HD</string>
-    <string name="input_hint">Tempel tautan TikTok di sini... (vt.tiktok, m.tiktok, dll)</string>
+    <string name="header_subtitle">HyTik Core Engine • HD Tanpa Watermark • Super Cepat</string>
+    <string name="input_hint">Tempel tautan TikTok di sini... (vt.tiktok, vm.tiktok, m.tiktok, dll)</string>
     <string name="btn_paste">Tempel</string>
     <string name="btn_clear">Hapus</string>
-    <string name="btn_download">Cek &amp; Unduh</string>
-    <string name="status_loading">Memuat &amp; mengekstrak data dari server...</string>
+    <string name="btn_download">Analisa Link</string>
+    <string name="status_loading">HyTik Core Engine sedang menganalisis &amp; mengekstrak data...</string>
     <string name="error_invalid_url">Tautan tidak valid! Masukkan tautan TikTok yang benar.</string>
-    <string name="error_fetch_failed">Gagal mengekstrak tautan. Periksa koneksi atau coba tautan lain.</string>
+    <string name="error_fetch_failed">Gagal mengekstrak tautan. HyTik otomatis mencoba jalur lain, periksa koneksi atau coba lagi.</string>
     <string name="clipboard_detected">Tautan TikTok terdeteksi di papan klip!</string>
 
     <!-- Result Card -->
-    <string name="result_title">Hasil Ekstraksi</string>
-    <string name="download_hd_no_wm">Video HD (No Watermark)</string>
-    <string name="download_no_wm">Video SD (No Watermark)</string>
-    <string name="download_with_wm">Video (With Watermark)</string>
-    <string name="download_audio">Audio MP3 (Musik)</string>
-    <string name="download_all_photos">Unduh Semua Foto (%1$d Foto)</string>
-    <string name="photo_slide_header">Daftar Foto / Carousel (%1$d Foto)</string>
+    <string name="result_title">Hasil Analisa HyTik Core</string>
+    <string name="download_hd_no_wm">💎 Video HD (Tanpa Watermark)</string>
+    <string name="download_no_wm">🎬 Video SD (Tanpa Watermark)</string>
+    <string name="download_with_wm">📹 Video (Dengan Watermark)</string>
+    <string name="download_audio">🎵 Audio MP3 (Musik TikTok)</string>
+    <string name="download_all_photos">📸 Unduh Semua Foto (%1$d Foto)</string>
+    <string name="photo_slide_header">🖼️ Carousel Foto (%1$d Foto)</string>
     <string name="btn_download_photo">Unduh Foto Ini</string>
 
     <!-- History Tab -->
@@ -45,30 +45,35 @@
 
     <!-- Settings & Guide Tab -->
     <string name="settings_title">Pengaturan &amp; Panduan</string>
-    <string name="guide_title">Cara Mengunduh dari TikTok:</string>
-    <string name="guide_step_1">1. Buka aplikasi atau situs web TikTok.</string>
-    <string name="guide_step_2">2. Pilih video atau slide foto yang ingin diunduh.</string>
-    <string name="guide_step_3">3. Klik tombol Bagikan (Share) berbentuk panah di kanan bawah.</string>
-    <string name="guide_step_4">4. Klik \"Salin Tautan\" (Copy Link).</string>
-    <string name="guide_step_5">5. Buka kembali aplikasi HyTik, tautan akan otomatis terdeteksi atau tekan \"Tempel\".</string>
+    <string name="guide_title">Cara Mengunduh dari TikTok dengan HyTik:</string>
+    <string name="guide_step_1">1. Buka TikTok, pilih video / slide foto favoritmu.</string>
+    <string name="guide_step_2">2. Tap tombol Bagikan (Share) → Salin Tautan.</string>
+    <string name="guide_step_3">3. Buka HyTik, tautan otomatis terdeteksi atau tap Tempel.</string>
+    <string name="guide_step_4">4. Tap Analisa Link, HyTik Core Engine akan memproses otomatis.</string>
+    <string name="guide_step_5">5. Pilih kualitas: HD, SD, Watermark, atau MP3 / Foto, lalu download. File tersimpan di folder HyTik &amp; muncul notifikasi di bar.</string>
     <string name="pref_auto_paste_title">Deteksi Tautan Otomatis</string>
-    <string name="pref_auto_paste_desc">Otomatis mengisi tautan TikTok saat membuka aplikasi jika ada di papan klip</string>
-    <string name="pref_engine_title">Mesin Ekstraksi (Engine)</string>
-    <string name="pref_engine_desc">Pilih mesin ekstraksi utama atau gunakan mode Hybrid Auto-Fallback</string>
-    <string name="pref_storage_title">Lokasi Penyimpanan</string>
-    <string name="pref_storage_desc">Video disimpan di Movies/HyTik, Foto di Pictures/HyTik, Audio di Music/HyTik</string>
+    <string name="pref_auto_paste_desc">Otomatis mendeteksi tautan TikTok di papan klip saat membuka aplikasi</string>
+    <string name="pref_engine_title">HyTik Core Engine</string>
+    <string name="pref_engine_desc">Pilih mesin inti HyTik: Smart Auto (AI Hybrid), Ultra HD (kualitas tertinggi), Turbo Fast (super cepat). Semua diproses lokal tanpa menyebut sumber API eksternal.</string>
+    <string name="pref_storage_title">Lokasi Penyimpanan Profesional</string>
+    <string name="pref_storage_desc">Video → Movies/HyTik, Foto → Pictures/HyTik, Musik → Music/HyTik. Terorganisir otomatis &amp; terdeteksi galeri.</string>
     <string name="pref_clear_history">Bersihkan Semua Riwayat</string>
     <string name="pref_clear_history_desc">Menghapus catatan riwayat unduhan di aplikasi</string>
-    <string name="about_app">Tentang HyTik</string>
-    <string name="about_desc">HyTik v1.0.0-PRO - Aplikasi pengunduh TikTok tercepat dengan multi-engine scraper, mendukung semua format tautan dan semua tipe konten (Video HD, Slide Foto, Audio MP3).</string>
+    <string name="about_app">Tentang HyTik - Professional Edition</string>
+    <string name="about_desc">HyTik v1.0.0-PRO • HyTik Core Engine 2.0\n\nMesin ekstraksi cerdas multi-jalur internal (Smart Auto, Ultra HD, Turbo Fast) yang menjamin link HD, SD, Watermark, Foto Carousel &amp; Audio MP3 selalu ditemukan. Dilengkapi manajemen izin media profesional &amp; notifikasi bar progress yang real-time. Cepat, aman, tanpa watermark, dan tampilan premium.</string>
 
     <!-- Notifications & Status -->
-    <string name="download_started">Unduhan dimulai: %1$s</string>
-    <string name="download_complete">Unduhan selesai! Tersimpan di folder %1$s</string>
-    <string name="download_failed">Unduhan gagal: %1$s</string>
-    <string name="file_not_found">File tidak ditemukan di penyimpanan peranti.</string>
-    <string name="permission_required">Izin penyimpanan diperlukan untuk menyimpan file pada versi Android lama.</string>
+    <string name="download_started">Download dimulai: %1$s</string>
+    <string name="download_complete">Download selesai! Tersimpan di %1$s. Tap notifikasi untuk membuka.</string>
+    <string name="download_failed">Download gagal: %1$s</string>
+    <string name="file_not_found">File tidak ditemukan di penyimpanan perangkat.</string>
+    <string name="permission_required">Izin media diperlukan untuk pengalaman profesional. Aktifkan di pengaturan agar HyTik dapat menyimpan ke galeri.</string>
     <string name="yes">Ya</string>
     <string name="no">Tidak</string>
     <string name="close">Tutup</string>
+
+    <!-- Permission Pro -->
+    <string name="perm_title">Akses Media Profesional</string>
+    <string name="perm_media_desc">HyTik butuh akses Video, Gambar, dan Audio untuk menyimpan file ke folder galeri Anda secara profesional.</string>
+    <string name="perm_notif_desc">Izin notifikasi agar progress download muncul di status bar.</string>
 </resources>
