@@ -225,6 +225,7 @@ class HyTikExtractorEngine {
         )
 
         for (endpoint in endpoints) {
+            var resultFound: TikTokMediaResult? = null
             try {
                 val encoded = URLEncoder.encode(url, "UTF-8")
                 val fullUrl = if (endpoint.contains("feed/search")) "$endpoint?url=$encoded" else "$endpoint?url=$encoded&hd=1&count=12&cursor=0&web=1&from=hytik"
@@ -237,15 +238,19 @@ class HyTikExtractorEngine {
                     .header("Origin", "https://www.tikwm.com")
                     .build()
 
-                client.newCall(request).execute().use { resp ->
-                    if (!resp.isSuccessful) continue
-                    val bodyStr = resp.body?.string() ?: continue
-                    if (bodyStr.isBlank()) continue
+                val response = client.newCall(request).execute()
+                response.use { resp ->
+                    if (!resp.isSuccessful) return@use
+                    val bodyStr = resp.body?.string() ?: return@use
+                    if (bodyStr.isBlank()) return@use
                     val parsed = parseTikWmJson(bodyStr)
-                    if (parsed != null && parsed.hasPlayableContent()) return parsed
+                    if (parsed != null && parsed.hasPlayableContent()) {
+                        resultFound = parsed
+                    }
                 }
+                if (resultFound != null) return resultFound
             } catch (_: Exception) {
-                continue
+                // lanjut endpoint berikutnya
             }
         }
         return null
@@ -376,6 +381,7 @@ class HyTikExtractorEngine {
         )
 
         for (ep in endpoints) {
+            var resultFound: TikTokMediaResult? = null
             try {
                 val request = Request.Builder()
                     .url(ep)
@@ -383,15 +389,19 @@ class HyTikExtractorEngine {
                     .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) Chrome/121")
                     .header("Accept", "application/json")
                     .build()
-                client.newCall(request).execute().use { resp ->
-                    if (!resp.isSuccessful) continue
-                    val bodyStr = resp.body?.string() ?: continue
-                    if (bodyStr.isBlank()) continue
+                val response = client.newCall(request).execute()
+                response.use { resp ->
+                    if (!resp.isSuccessful) return@use
+                    val bodyStr = resp.body?.string() ?: return@use
+                    if (bodyStr.isBlank()) return@use
                     val parsed = parseTikLyJson(bodyStr)
-                    if (parsed != null && parsed.hasPlayableContent()) return parsed
+                    if (parsed != null && parsed.hasPlayableContent()) {
+                        resultFound = parsed
+                    }
                 }
+                if (resultFound != null) return resultFound
             } catch (_: Exception) {
-                continue
+                // lanjut endpoint berikutnya
             }
         }
         return null
