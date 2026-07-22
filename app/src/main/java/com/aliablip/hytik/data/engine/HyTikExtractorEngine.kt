@@ -10,18 +10,9 @@ import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.net.URLEncoder
 
-/**
- * HyTik Professional Extraction Engines
- * User tidak perlu tau kita pakai API eksternal, semua di-branding sebagai HyTik Core Engines
- */
 enum class EngineMode {
-    /** Smart Auto - Paling stabil, otomatis pilih jalur terbaik */
     SMART_AUTO,
-
-    /** Ultra HD - Kualitas maksimum hingga 4K tanpa watermark */
     ULTRA_HD,
-
-    /** Turbo Fast - Jalur super cepat untuk hasil instan */
     TURBO_FAST;
 
     fun getDisplayName(): String = when (this) {
@@ -43,7 +34,6 @@ enum class EngineMode {
     }
 
     companion object {
-        // Migration helper from legacy names (HYBRID_AUTO, TIKWM_HD, TIKLY_FAST)
         fun fromStoredName(name: String?): EngineMode {
             return when (name?.uppercase()) {
                 "HYBRID_AUTO", "SMART_AUTO", "SMART", "HYCORE_SMART", "AUTO" -> SMART_AUTO
@@ -66,21 +56,17 @@ class HyTikExtractorEngine {
                     ?: return@withContext Result.failure(
                         IllegalArgumentException("Tautan TikTok tidak valid! Pastikan link mengandung tiktok.com, vt.tiktok.com, atau vm.tiktok.com")
                     )
-
                 val resolvedUrl = resolveShortLink(cleanUrl)
-
                 when (mode) {
                     EngineMode.ULTRA_HD -> {
                         val ultra = runCatching { extractViaUltraEngine(resolvedUrl) }.getOrNull()
                         if (ultra != null && ultra.hasPlayableContent()) {
                             return@withContext Result.success(ultra)
                         }
-                        // Ultra fallback to smart
                         val smartFallback = runCatching { extractViaSmartHybrid(resolvedUrl) }.getOrNull()
                         if (smartFallback != null) return@withContext Result.success(smartFallback)
                         Result.failure(Exception("Gagal memuat dengan ${mode.getDisplayName()}. Coba gunakan Smart Auto atau periksa tautan."))
                     }
-
                     EngineMode.TURBO_FAST -> {
                         val turbo = runCatching { extractViaTurboEngine(resolvedUrl) }.getOrNull()
                         if (turbo != null && turbo.hasPlayableContent()) {
@@ -90,7 +76,6 @@ class HyTikExtractorEngine {
                         if (smartFallback != null) return@withContext Result.success(smartFallback)
                         Result.failure(Exception("Gagal memuat dengan ${mode.getDisplayName()}. Coba gunakan Smart Auto."))
                     }
-
                     EngineMode.SMART_AUTO -> {
                         val result = extractViaSmartHybrid(resolvedUrl)
                         if (result != null) Result.success(result)
@@ -107,11 +92,65 @@ class HyTikExtractorEngine {
         return !videoHdNoWmUrl.isNullOrBlank() || !videoNoWmUrl.isNullOrBlank() || !videoWmUrl.isNullOrBlank() || photoUrls.isNotEmpty() || !audioMp3Url.isNullOrBlank()
     }
 
+    // ---------- URL NORMALIZER - FIX SCHEME ERROR ----------
+    private fun normalizeUrl(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        var url = raw.trim()
+        url = unescapeJsonString(url)
+        url = url.replace("&amp;", "&").replace("\\u0026amp;", "&")
+        url = url.trim()
+
+        if (url.isBlank()) return null
+
+        // filter out obvious non-urls like /video/xxx , /@user , etc.
+        if (url.startsWith("/") && !url.startsWith("//")) {
+            return null
+        }
+
+        // protocol-relative //xxx -> https://xxx
+        if (url.startsWith("//")) {
+            url = "https:$url"
+        }
+
+        // must start with http(s)
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            // try to recover if it contains known cdn domains but missing scheme
+            if (url.contains("tiktokcdn") || url.contains("muscdn") || url.contains("tiktok.com") || url.contains("byteoversea") || url.contains("ibytedtos") || url.contains("tiktokcdn-us") || url.contains("tiktokcdn-eu")) {
+                // if looks like domain.com/path but no scheme
+                if (!url.contains("://")) {
+                    url = "https://$url"
+                } else {
+                    return null
+                }
+            } else {
+                return null
+            }
+        }
+
+        // final check: must be absolute http url, no spaces
+        if (url.contains(" ")) return null
+        if (!url.startsWith("http")) return null
+
+        // reject if still contains /video/xxx as path without domain mp4? Actually tiktok video page urls are not direct downloadable, but they start with https://www.tiktok.com/@.../video/...
+        // Such urls should be rejected for download - only allow cdn or direct file urls for video
+        // However for safety, we allow www.tiktok.com page urls only if it's used as fallback? For download we need cdn.
+        // We'll allow any https url for now, but filter later: if url contains "/video/" and contains "tiktok.com/@" and not containing ".mp4" and not "tiktokcdn", it's a page url, not downloadable.
+        if (url.contains("tiktok.com/@") && url.contains("/video/") && !url.contains("tiktokcdn") && !url.contains(".mp4") && !url.contains("muscdn")) {
+            // This is a page URL, not a direct file URL, reject for download link
+            return null
+        }
+
+        return url
+    }
+
+    private fun normalizeUrlList(rawList: List<String>): List<String> {
+        return rawList.mapNotNull { normalizeUrl(it) }.distinct()
+    }
+
     // ---------- URL Cleaning & Redirect Resolver ----------
 
     private fun extractAndCleanUrl(text: String): String? {
         if (text.isBlank()) return null
-        // cari semua url tiktok dari text panjang
         val regexList = listOf(
             Regex("""https?://(?:www\.)?tiktok\.com/[^\s"'()<>]+""", RegexOption.IGNORE_CASE),
             Regex("""https?://(?:vt|vm|m|t)\.tiktok\.com/[^\s"'()<>]+""", RegexOption.IGNORE_CASE),
@@ -122,12 +161,10 @@ class HyTikExtractorEngine {
             val match = rgx.find(text)
             if (match != null) {
                 var url = match.value.trim()
-                // bersihkan trailing punctuation umum
                 url = url.trimEnd('.', ',', '!', ')', ']', '}', '"', '\'')
                 return url
             }
         }
-        // fallback generic
         val generic = Regex("""https?://[^\s]+\.tiktok\.com/[^\s]+""", RegexOption.IGNORE_CASE).find(text)
         return generic?.value?.trim()?.trimEnd('.', ',', ')')
     }
@@ -137,32 +174,41 @@ class HyTikExtractorEngine {
         val needResolve = lower.contains("vt.tiktok.com") || lower.contains("vm.tiktok.com") || lower.contains("t.tiktok.com") || lower.contains("/t/")
         if (!needResolve) return originalUrl
 
-        // Coba 2 metode: GET follow redirect + JSoup meta canonical
         try {
             val request = Request.Builder()
                 .url(originalUrl)
                 .get()
-                .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0 Mobile Safari/537.36 TikTok 32.1.3")
+                .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 Chrome/121 Mobile Safari/537.36 TikTok 32.1.3")
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .build()
+            var finalUrlFound: String? = null
+            var canonicalFound: String? = null
+            var ogFound: String? = null
             client.newCall(request).execute().use { response ->
                 val finalUrl = response.request.url.toString()
                 if (finalUrl.isNotBlank() && finalUrl != originalUrl && finalUrl.contains("tiktok.com")) {
-                    return finalUrl
+                    finalUrlFound = finalUrl
+                    return@use
                 }
-                // coba parse body untuk canonical jika server response html
                 try {
                     val bodyStr = response.body?.string() ?: ""
                     if (bodyStr.contains("tiktok.com")) {
                         val canonical = Regex("""<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']""", RegexOption.IGNORE_CASE).find(bodyStr)?.groupValues?.get(1)
-                        if (!canonical.isNullOrBlank() && canonical.contains("tiktok.com")) return canonical
+                        if (!canonical.isNullOrBlank() && canonical.contains("tiktok.com")) {
+                            canonicalFound = canonical
+                            return@use
+                        }
                         val ogUrl = Regex("""<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']""", RegexOption.IGNORE_CASE).find(bodyStr)?.groupValues?.get(1)
-                        if (!ogUrl.isNullOrBlank() && ogUrl.contains("tiktok.com")) return ogUrl
+                        if (!ogUrl.isNullOrBlank() && ogUrl.contains("tiktok.com")) {
+                            ogFound = ogUrl
+                        }
                     }
                 } catch (_: Exception) {}
             }
-        } catch (_: Exception) {
-        }
+            if (finalUrlFound != null) return finalUrlFound!!
+            if (canonicalFound != null) return canonicalFound!!
+            if (ogFound != null) return ogFound!!
+        } catch (_: Exception) {}
 
         try {
             val doc = Jsoup.connect(originalUrl)
@@ -174,7 +220,6 @@ class HyTikExtractorEngine {
             if (!canon.isNullOrBlank() && canon.contains("tiktok.com")) return canon
             val og = doc.selectFirst("meta[property=og:url]")?.attr("content")
             if (!og.isNullOrBlank() && og.contains("tiktok.com")) return og
-            // final url after jsoup redirect
             val loc = doc.location()
             if (loc.isNotBlank() && loc != originalUrl && loc.contains("tiktok.com")) return loc
         } catch (_: Exception) {}
@@ -182,37 +227,25 @@ class HyTikExtractorEngine {
         return originalUrl
     }
 
-    // ---------- SMART HYBRID (try all) ----------
-
     private fun extractViaSmartHybrid(url: String): TikTokMediaResult? {
-        // 1. Ultra HD
         try {
             val ultra = extractViaUltraEngineInternal(url)
             if (ultra != null && ultra.hasPlayableContent()) return ultra
         } catch (_: Exception) {}
-
-        // 2. Turbo Fast
         try {
             val turbo = extractViaTurboEngineInternal(url)
             if (turbo != null && turbo.hasPlayableContent()) return turbo
         } catch (_: Exception) {}
-
-        // 3. WebCore Scraper
         try {
             val web = extractViaWebCoreEngine(url)
             if (web != null && web.hasPlayableContent()) return web
         } catch (_: Exception) {}
-
-        // 4. TikMate / Alternate public APIs
         try {
             val alt = extractViaAlternateApis(url)
             if (alt != null && alt.hasPlayableContent()) return alt
         } catch (_: Exception) {}
-
         return null
     }
-
-    // ---------- ULTRA HD ENGINE (Previously TikWM) ----------
 
     fun extractViaUltraEngine(url: String): TikTokMediaResult? = extractViaUltraEngineInternal(url)
 
@@ -223,7 +256,6 @@ class HyTikExtractorEngine {
             "https://www.tikwm.com/api/feed/search",
             "https://tikwm.com/api/feed/search"
         )
-
         for (endpoint in endpoints) {
             var resultFound: TikTokMediaResult? = null
             try {
@@ -237,7 +269,6 @@ class HyTikExtractorEngine {
                     .header("Referer", "https://www.tikwm.com/")
                     .header("Origin", "https://www.tikwm.com")
                     .build()
-
                 val response = client.newCall(request).execute()
                 response.use { resp ->
                     if (!resp.isSuccessful) return@use
@@ -249,9 +280,7 @@ class HyTikExtractorEngine {
                     }
                 }
                 if (resultFound != null) return resultFound
-            } catch (_: Exception) {
-                // lanjut endpoint berikutnya
-            }
+            } catch (_: Exception) {}
         }
         return null
     }
@@ -259,41 +288,29 @@ class HyTikExtractorEngine {
     private fun parseTikWmJson(jsonStr: String): TikTokMediaResult? {
         try {
             val root = JSONObject(jsonStr)
-            // support both {code:0, data:{}} and {data:{}} etc
             val code = root.optInt("code", 0)
-            // allow code 0 or no code
             if (root.has("code") && code != 0) {
-                // some APIs return code -1 with msg, treat as fail
-                if (code != 0) {
-                    // coba lihat apakah tetap ada data
-                    if (!root.has("data")) return null
-                }
+                if (!root.has("data")) return null
             }
             val dataObj = when {
                 root.has("data") && root.opt("data") is JSONObject -> root.getJSONObject("data")
-                root.has("data") && root.opt("data") is JSONObject -> root.getJSONObject("data")
                 root.has("data") -> root.optJSONObject("data")
-                else -> root // fallback direct
+                else -> root
             } ?: return null
 
-            // Bisa juga data berisi di dalam "data" lagi? untuk feed/search
             val realData = if (dataObj.has("data") && dataObj.opt("data") is JSONObject) dataObj.getJSONObject("data") else dataObj
 
             val id = realData.optString("id", System.currentTimeMillis().toString())
             val title = realData.optString("title", "").takeIf { it.isNotBlank() } ?: "TikTok Video by HyTik"
 
-            val cover = realData.optString("origin_cover", "").ifBlank { realData.optString("cover", "") }.ifBlank { realData.optString("ai_dynamic_cover", "") }
-            val duration = realData.optInt("duration", 0)
+            var coverRaw = realData.optString("origin_cover", "").ifBlank { realData.optString("cover", "") }.ifBlank { realData.optString("ai_dynamic_cover", "") }
+            var playRaw = realData.optString("play", "")
+            var wmplayRaw = realData.optString("wmplay", "")
+            var hdplayRaw = realData.optString("hdplay", "")
+            if (playRaw.isBlank()) playRaw = realData.optString("hdplay", "")
+            if (playRaw.isBlank()) playRaw = realData.optString("playAddr", "")
 
-            var play = realData.optString("play", "")
-            var wmplay = realData.optString("wmplay", "")
-            var hdplay = realData.optString("hdplay", "")
-            // fallback alternate keys
-            if (play.isBlank()) play = realData.optString("hdplay", "")
-            if (play.isBlank()) play = realData.optString("playAddr", "")
-            // some responses have "hdplay" = video no wm hd
-
-            val musicUrl = realData.optString("music", "").ifBlank {
+            var musicUrlRaw = realData.optString("music", "").ifBlank {
                 val musicInfo = realData.optJSONObject("music_info")
                 musicInfo?.optString("play", "") ?: ""
             }
@@ -301,47 +318,55 @@ class HyTikExtractorEngine {
             val authorObj = realData.optJSONObject("author")
             val authorName = authorObj?.optString("nickname", "")?.ifBlank { authorObj.optString("unique_id", "") } ?: "TikTok Creator"
             val authorHandle = authorObj?.optString("unique_id", "")?.let { if (it.isNotBlank()) "@$it" else "@tiktok_user" } ?: "@tiktok_user"
-            val authorAvatar = authorObj?.optString("avatar", "") ?: ""
+            var authorAvatarRaw = authorObj?.optString("avatar", "") ?: ""
 
             val playCount = realData.optLong("play_count", 0)
             val diggCount = realData.optLong("digg_count", 0)
             val commentCount = realData.optLong("comment_count", 0)
 
-            // images - bisa array string atau object
+            // normalize
+            val cover = normalizeUrl(coverRaw) ?: ""
+            val play = normalizeUrl(playRaw) ?: ""
+            val wmplay = normalizeUrl(wmplayRaw) ?: ""
+            val hdplay = normalizeUrl(hdplayRaw) ?: ""
+            val musicUrl = normalizeUrl(musicUrlRaw) ?: ""
+            val authorAvatar = normalizeUrl(authorAvatarRaw) ?: authorAvatarRaw // avatar boleh kosong
+
             val imagesArray = mutableListOf<String>()
             if (realData.has("images")) {
                 val imgVal = realData.opt("images")
                 if (imgVal is org.json.JSONArray) {
                     for (i in 0 until imgVal.length()) {
-                        val u = imgVal.optString(i, "")
-                        if (u.isNotBlank()) imagesArray.add(u)
+                        val u = normalizeUrl(imgVal.optString(i, "")) ?: continue
+                        imagesArray.add(u)
                     }
-                } else if (imgVal is String && imgVal.isNotBlank()) {
-                    imagesArray.add(imgVal)
+                } else if (imgVal is String) {
+                    normalizeUrl(imgVal)?.let { imagesArray.add(it) }
                 }
             }
-            // alternative: "image_post_info" etc
-            if (imagesArray.isEmpty() && realData.has("images") ) {
+            if (imagesArray.isEmpty() && realData.has("images")) {
                 try {
                     val arr = realData.getJSONArray("images")
-                    for (i in 0 until arr.length()) imagesArray.add(arr.getString(i))
+                    for (i in 0 until arr.length()) {
+                        normalizeUrl(arr.getString(i))?.let { imagesArray.add(it) }
+                    }
                 } catch (_: Exception) {}
             }
 
+            val filteredImages = normalizeUrlList(imagesArray)
+
             val mediaType = when {
-                imagesArray.isNotEmpty() -> MediaType.PHOTO_CAROUSEL
+                filteredImages.isNotEmpty() -> MediaType.PHOTO_CAROUSEL
                 play.isNotBlank() || hdplay.isNotBlank() || wmplay.isNotBlank() -> MediaType.VIDEO
                 musicUrl.isNotBlank() -> MediaType.AUDIO_ONLY
                 else -> MediaType.VIDEO
             }
 
-            // pastikan minimal ada 1 video url
-            // jika hd kosong, duplicate dari play
             val finalHd = hdplay.ifBlank { play }.ifBlank { wmplay }
             val finalNoWm = play.ifBlank { hdplay }.ifBlank { wmplay }
             val finalWm = wmplay.ifBlank { play }.ifBlank { hdplay }
 
-            if (finalHd.isBlank() && finalNoWm.isBlank() && finalWm.isBlank() && imagesArray.isEmpty() && musicUrl.isBlank()) {
+            if (finalHd.isBlank() && finalNoWm.isBlank() && finalWm.isBlank() && filteredImages.isEmpty() && musicUrl.isBlank()) {
                 return null
             }
 
@@ -356,9 +381,9 @@ class HyTikExtractorEngine {
                 videoHdNoWmUrl = finalHd.takeIf { it.isNotBlank() },
                 videoWmUrl = finalWm.takeIf { it.isNotBlank() },
                 audioMp3Url = musicUrl.takeIf { it.isNotBlank() },
-                photoUrls = imagesArray,
+                photoUrls = filteredImages,
                 mediaType = mediaType,
-                durationSec = duration,
+                durationSec = realData.optInt("duration", 0),
                 playCount = playCount,
                 likeCount = diggCount,
                 commentCount = commentCount
@@ -367,8 +392,6 @@ class HyTikExtractorEngine {
             return null
         }
     }
-
-    // ---------- TURBO FAST ENGINE (Previously TikLyDown) ----------
 
     fun extractViaTurboEngine(url: String): TikTokMediaResult? = extractViaTurboEngineInternal(url)
 
@@ -379,7 +402,6 @@ class HyTikExtractorEngine {
             "https://api.tiklydown.eu.org/api/download/v2?url=$encoded",
             "https://tiklydown.eu.org/api/download?url=$encoded"
         )
-
         for (ep in endpoints) {
             var resultFound: TikTokMediaResult? = null
             try {
@@ -400,9 +422,7 @@ class HyTikExtractorEngine {
                     }
                 }
                 if (resultFound != null) return resultFound
-            } catch (_: Exception) {
-                // lanjut endpoint berikutnya
-            }
+            } catch (_: Exception) {}
         }
         return null
     }
@@ -410,7 +430,6 @@ class HyTikExtractorEngine {
     private fun parseTikLyJson(jsonStr: String): TikTokMediaResult? {
         try {
             val root = JSONObject(jsonStr)
-            // support wrapper {result:{}} or direct
             val dataObj = when {
                 root.has("result") && root.opt("result") is JSONObject -> root.getJSONObject("result")
                 root.has("data") && root.opt("data") is JSONObject -> root.getJSONObject("data")
@@ -420,40 +439,41 @@ class HyTikExtractorEngine {
             val id = dataObj.optString("id", System.currentTimeMillis().toString())
             val title = dataObj.optString("title", "").ifBlank { dataObj.optString("desc", "") }.ifBlank { "TikTok Video by HyTik" }
 
-            // video
             val videoObj = dataObj.optJSONObject("video")
-            var noWm = videoObj?.optString("noWatermark", "") ?: ""
-            var wm = videoObj?.optString("watermark", "") ?: ""
-            val cover = videoObj?.optString("cover", "")?.ifBlank { videoObj.optString("dynamic_cover", "") } ?: ""
+            var noWmRaw = videoObj?.optString("noWatermark", "") ?: ""
+            var wmRaw = videoObj?.optString("watermark", "") ?: ""
+            var coverRaw = videoObj?.optString("cover", "")?.ifBlank { videoObj.optString("dynamic_cover", "") } ?: ""
             val duration = videoObj?.optInt("duration", 0) ?: 0
 
-            // fallback other keys (video1, video2, hd, etc)
-            if (noWm.isBlank()) noWm = dataObj.optString("video_no_watermark", "")
-            if (noWm.isBlank()) noWm = dataObj.optString("nwm_video_url", "")
-            if (noWm.isBlank()) noWm = dataObj.optString("downloadAddr", "")
-            if (wm.isBlank()) wm = dataObj.optString("wm_video_url", "")
-            if (noWm.isBlank()) noWm = videoObj?.optString("downloadAddr", "") ?: ""
-            if (noWm.isBlank()) noWm = videoObj?.optString("playAddr", "") ?: ""
+            if (noWmRaw.isBlank()) noWmRaw = dataObj.optString("video_no_watermark", "")
+            if (noWmRaw.isBlank()) noWmRaw = dataObj.optString("nwm_video_url", "")
+            if (noWmRaw.isBlank()) noWmRaw = dataObj.optString("downloadAddr", "")
+            if (wmRaw.isBlank()) wmRaw = dataObj.optString("wm_video_url", "")
+            if (noWmRaw.isBlank()) noWmRaw = videoObj?.optString("downloadAddr", "") ?: ""
+            if (noWmRaw.isBlank()) noWmRaw = videoObj?.optString("playAddr", "") ?: ""
 
-            // author
             val authorObj = dataObj.optJSONObject("author")
             val authorName = authorObj?.optString("name", "")?.ifBlank { authorObj.optString("nickname", "") }?.ifBlank { "TikTok Creator" } ?: "TikTok Creator"
             val authorHandleRaw = authorObj?.optString("unique_id", "") ?: authorObj?.optString("uniqueId", "") ?: ""
             val authorHandle = if (authorHandleRaw.isNotBlank()) "@$authorHandleRaw" else "@tiktok_user"
-            val authorAvatar = authorObj?.optString("avatar", "") ?: ""
+            var authorAvatarRaw = authorObj?.optString("avatar", "") ?: ""
 
-            // music
             val musicObj = dataObj.optJSONObject("music")
-            var musicUrl = musicObj?.optString("play_url", "") ?: musicObj?.optString("playUrl", "") ?: ""
-            if (musicUrl.isBlank()) musicUrl = dataObj.optString("music_url", "")
+            var musicUrlRaw = musicObj?.optString("play_url", "") ?: musicObj?.optString("playUrl", "") ?: ""
+            if (musicUrlRaw.isBlank()) musicUrlRaw = dataObj.optString("music_url", "")
 
-            // stats
             val statsObj = dataObj.optJSONObject("stats")
             val like = statsObj?.optLong("likeCount", 0) ?: statsObj?.optLong("diggCount", 0) ?: 0
             val comment = statsObj?.optLong("commentCount", 0) ?: 0
             val playCount = statsObj?.optLong("playCount", 0) ?: 0
 
-            // images
+            // normalize
+            val noWm = normalizeUrl(noWmRaw) ?: ""
+            val wm = normalizeUrl(wmRaw) ?: ""
+            val cover = normalizeUrl(coverRaw) ?: ""
+            val musicUrl = normalizeUrl(musicUrlRaw) ?: ""
+            val authorAvatar = normalizeUrl(authorAvatarRaw) ?: authorAvatarRaw
+
             val photoList = mutableListOf<String>()
             if (dataObj.has("images")) {
                 val arr = dataObj.optJSONArray("images")
@@ -462,22 +482,21 @@ class HyTikExtractorEngine {
                         val item = arr.opt(i)
                         when (item) {
                             is JSONObject -> {
-                                val u = item.optString("url", "")
-                                if (u.isNotBlank()) photoList.add(u)
+                                val u = normalizeUrl(item.optString("url", "")) ?: continue
+                                photoList.add(u)
                             }
-                            is String -> if (item.isNotBlank()) photoList.add(item)
+                            is String -> {
+                                normalizeUrl(item)?.let { photoList.add(it) }
+                            }
                         }
                     }
-                } else {
-                    // may be object
-                    val obj = dataObj.optJSONObject("images")
-                    // ignore
                 }
             }
 
-            // jika tidak ada video tapi ada photo, media type photo
+            val filteredPhotos = normalizeUrlList(photoList)
+
             val mediaType = when {
-                photoList.isNotEmpty() -> MediaType.PHOTO_CAROUSEL
+                filteredPhotos.isNotEmpty() -> MediaType.PHOTO_CAROUSEL
                 noWm.isNotBlank() || wm.isNotBlank() -> MediaType.VIDEO
                 else -> MediaType.VIDEO
             }
@@ -485,7 +504,7 @@ class HyTikExtractorEngine {
             val finalNoWm = noWm.ifBlank { wm }
             val finalWm = wm.ifBlank { noWm }
 
-            if (finalNoWm.isBlank() && photoList.isEmpty() && musicUrl.isBlank()) return null
+            if (finalNoWm.isBlank() && filteredPhotos.isEmpty() && musicUrl.isBlank()) return null
 
             return TikTokMediaResult(
                 id = id,
@@ -495,10 +514,10 @@ class HyTikExtractorEngine {
                 authorAvatarUrl = authorAvatar,
                 coverUrl = cover.ifBlank { authorAvatar },
                 videoNoWmUrl = finalNoWm.takeIf { it.isNotBlank() },
-                videoHdNoWmUrl = finalNoWm.takeIf { it.isNotBlank() }, // turbo provides same HD
+                videoHdNoWmUrl = finalNoWm.takeIf { it.isNotBlank() },
                 videoWmUrl = finalWm.takeIf { it.isNotBlank() },
                 audioMp3Url = musicUrl.takeIf { it.isNotBlank() },
-                photoUrls = photoList,
+                photoUrls = filteredPhotos,
                 mediaType = mediaType,
                 durationSec = duration,
                 playCount = playCount,
@@ -509,8 +528,6 @@ class HyTikExtractorEngine {
             return null
         }
     }
-
-    // ---------- WEB CORE ENGINE (Scraper) ----------
 
     private fun extractViaWebCoreEngine(url: String): TikTokMediaResult? {
         try {
@@ -526,49 +543,46 @@ class HyTikExtractorEngine {
 
             val html = doc.html()
 
-            // 1. Try SIGI_STATE
             val sigiStateScript = doc.select("script#SIGI_STATE").firstOrNull()?.data()
                 ?: doc.select("script[id=SIGI_STATE]").firstOrNull()?.data()
                 ?: ""
 
-            var workingHtml = if (sigiStateScript.isNotBlank()) sigiStateScript else html
+            val workingHtml = if (sigiStateScript.isNotBlank()) sigiStateScript else html
 
-            // Extract video URLs via regex
-            val playAddr = extractJsonUrl(workingHtml, listOf("playAddr", "downloadAddr", "playUrl", "downloadUrl"))
-            var coverUrl = extractJsonUrl(workingHtml, listOf("dynamicCover", "originCover", "cover", "thumbnailUrl")) ?: ""
-            if (coverUrl.isBlank()) {
-                coverUrl = doc.selectFirst("meta[property=og:image]")?.attr("content") ?: ""
+            var playAddrRaw = extractJsonUrlRaw(workingHtml, listOf("playAddr", "downloadAddr", "playUrl", "downloadUrl"))
+            var coverRaw = extractJsonUrlRaw(workingHtml, listOf("dynamicCover", "originCover", "cover", "thumbnailUrl")) ?: ""
+            if (coverRaw.isBlank()) {
+                coverRaw = doc.selectFirst("meta[property=og:image]")?.attr("content") ?: ""
             }
 
-            var authorName = extractJsonField(workingHtml, listOf("nickname", "authorName")) ?: "TikTok Creator"
+            val authorName = extractJsonField(workingHtml, listOf("nickname", "authorName")) ?: "TikTok Creator"
             val uniqueId = extractJsonField(workingHtml, listOf("uniqueId", "unique_id")) ?: "tiktok_user"
-            val authorAvatar = extractJsonUrl(workingHtml, listOf("avatarLarger", "avatarMedium", "avatarThumb", "avatar")) ?: ""
+            var authorAvatarRaw = extractJsonUrlRaw(workingHtml, listOf("avatarLarger", "avatarMedium", "avatarThumb", "avatar")) ?: ""
 
             val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
                 ?: doc.selectFirst("meta[property=og:description]")?.attr("content")
                 ?: doc.title().ifBlank { "TikTok Video by HyTik" }
 
-            // id
             val idMatch = Regex("""/video/(\d+)""").find(url) ?: Regex("""/photo/(\d+)""").find(url) ?: Regex(""""id":"(\d{10,})"""").find(workingHtml)
             val videoId = idMatch?.groupValues?.get(1) ?: System.currentTimeMillis().toString()
 
-            // cek photo carousel di halaman
-            val photoUrls = mutableListOf<String>()
-            // pola untuk foto tiktok slide: "imagePost": {"images": [{"imageURL":...}]}
-            val imageRegex = Regex(""""imageURL"\s*:\s*\{\s*"urlList"\s*:\s*\[([^\]]+)\]""")
-            // simpler: cari semua https url dengan .jpeg/.jpg yang mengandung tiktok
+            val photoUrlsRaw = mutableListOf<String>()
             if (html.contains("imagePost") || html.contains("photo")) {
                 val urlPattern = Regex("""https?://[^"']+\.(?:jpg|jpeg|png)[^"']*""")
                 val matches = urlPattern.findAll(html).map { it.value }.filter {
                     it.contains("tiktok") || it.contains("muscdn") || it.contains("tiktokcdn")
                 }.distinct().take(35).toList()
-                // filter valid
-                photoUrls.addAll(matches)
+                photoUrlsRaw.addAll(matches)
             }
 
+            val playAddr = normalizeUrl(playAddrRaw)
+            val coverUrl = normalizeUrl(coverRaw) ?: ""
+            val authorAvatar = normalizeUrl(authorAvatarRaw) ?: authorAvatarRaw
+            val photoUrls = normalizeUrlList(photoUrlsRaw)
+
             if (playAddr.isNullOrBlank() && photoUrls.isEmpty()) {
-                // fallback og:video
-                val ogVideo = doc.selectFirst("meta[property=og:video]")?.attr("content")
+                val ogVideoRaw = doc.selectFirst("meta[property=og:video]")?.attr("content") ?: ""
+                val ogVideo = normalizeUrl(ogVideoRaw)
                 if (!ogVideo.isNullOrBlank()) {
                     return TikTokMediaResult(
                         id = videoId,
@@ -621,22 +635,21 @@ class HyTikExtractorEngine {
                     mediaType = if (photoUrls.isNotEmpty()) MediaType.PHOTO_CAROUSEL else MediaType.VIDEO
                 )
             }
-
             return null
         } catch (_: Exception) {
             return null
         }
     }
 
-    private fun extractJsonUrl(source: String, keys: List<String>): String? {
+    private fun extractJsonUrlRaw(source: String, keys: List<String>): String? {
         for (k in keys) {
-            // pattern "key":"url"
             val rgx = Regex(""""$k"\s*:\s*"([^"]+)"""")
             val match = rgx.find(source)
             if (match != null) {
                 var url = match.groupValues[1]
                 url = unescapeJsonString(url)
-                if (url.startsWith("http")) return url
+                // kembalikan raw nanti dinormalisasi di luar
+                return url
             }
         }
         return null
@@ -665,13 +678,9 @@ class HyTikExtractorEngine {
             .replace("\\\\", "\\")
     }
 
-    // ---------- ALTERNATE APIS (third fallback) ----------
-
     private fun extractViaAlternateApis(url: String): TikTokMediaResult? {
-        // Try SnapTik-ish endpoint via Rapid? Or public https://tikmate.app/api
         try {
             val encoded = URLEncoder.encode(url, "UTF-8")
-            // try tikmate
             val req = Request.Builder()
                 .url("https://tikmate.app/api/lookup?url=$encoded")
                 .get()
@@ -681,16 +690,14 @@ class HyTikExtractorEngine {
                 if (resp.isSuccessful) {
                     val body = resp.body?.string() ?: ""
                     if (body.contains("token") || body.contains("id")) {
-                        // parse token then attempt second? For simplicity skip complex two-step
                         val token = JSONObject(body).optString("token", "")
                         if (token.isNotBlank()) {
-                            // Could fetch video but need deeper, return null for now
+                            // future implementation
                         }
                     }
                 }
             }
         } catch (_: Exception) {}
-        // else return null; hybrid will fail after this
         return null
     }
 }
